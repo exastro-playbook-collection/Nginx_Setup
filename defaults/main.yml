@@ -1,0 +1,41 @@
+---
+VAR_Nginx_tmpDir: /tmp
+# VAR_Nginx_server
+  # - isDelete: true
+    # server_name: server1.com
+  # - isDelete: false
+    # server_name: server2.com
+    # listen: 127.0.0.1:80
+    # root: /www/data
+    # location:
+      # - isDelete: true
+        # name: /
+      # - isDelete: false
+        # name: /images11/
+        # option:
+          # - root /data
+          # - proxy_pass http://www.example.com
+          # - sub_filter      /blog/ /blog-staging/
+          # - sub_filter     'href="http://127.0.0.1:8080/'    'href="https://$host/'
+          # - sub_filter     'img src="http://127.0.0.1:8080/' 'img src="https://$host/'
+          # - error_page 404 =301 http:/example.com/new/path.html
+        # return: 301 http://www.example.com/moved/here
+    # serverFilePath: /usr/local/nginx/conf/site1Conf/server1.conf
+  # - isDelete: false
+    # server_name: example1.com www.example1.com
+    # listen: 127.0.0.1:8080
+    # root: /www/data1
+    # location:
+      # - isDelete: true
+        # name: /images11/
+      # - isDelete: false
+        # name: /images22/
+        # option:
+          # - root /data
+          # - proxy_pass http://www.example.com
+          # - sub_filter      /blog/ /blog-staging/
+          # - sub_filter     'href="http://127.0.0.1:8080/'    'href="https://$host/'
+          # - sub_filter     'img src="http://127.0.0.1:8080/' 'img src="https://$host/'
+          # - error_page 404 =301 http:/example.com/new/path.html
+        # return: 301 http://www.example.com/moved/here
+    # serverFilePath: /usr/local/nginx/conf/site1Conf/server2.conf

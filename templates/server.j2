@@ -1,0 +1,41 @@
+# This file template corresponds to the nginx configuration file
+events {
+}
+
+http {
+    server {
+    isDelete {{ item.isDelete }};
+	
+	{% if item.serverFilePath is defined %}
+    serverFilePath '{{ VAR_Nginx_tmpDir }}/Nginx_Setup/{{ inventory_hostname }}/conf_root{{ item.serverFilePath }}';
+    {% endif %}
+	
+    {% if item.listen is defined %}
+    listen {{ item.listen }};
+    {% endif %}
+
+    {% if item.server_name is defined %}
+    server_name {{ item.server_name }};
+    {% endif %}
+
+    {% if item.root is defined %}
+    root {{ item.root }};
+    {% endif %}
+
+    {% for k,v in item.items() if k.find('location') != -1 %}
+      {% for vlist in v %}
+    location {{ vlist.name }} {
+        isDelete {{ vlist.isDelete }};
+          {% if vlist.option is defined %}
+            {%for option in vlist.option %}
+        {{ option }};
+            {% endfor %}
+          {% endif %}
+		{% if vlist.return is defined %}
+        return {{ vlist.return }};
+		{% endif %}
+    }
+      {% endfor %}
+    {% endfor %}
+  }
+}

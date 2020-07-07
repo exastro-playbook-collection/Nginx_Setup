@@ -1,0 +1,38 @@
+---
+- name: check param VAR_Nginx_tmpDir
+  fail:
+    msg: "The variable VAR_Nginx_tmpDir cannot be NULL."
+  when: (VAR_Nginx_tmpDir is none) or (VAR_Nginx_tmpDir == '')
+
+- name: check param VAR_Nginx_server
+  fail:
+    msg: "The variable VAR_Nginx_server must be defined and cannot be NULL."
+  when: (VAR_Nginx_server is undefined) or (VAR_Nginx_server is none) or (VAR_Nginx_server == '')
+
+- name: check param subEle of VAR_Nginx_server
+  include_tasks: pre_check.yml
+  with_items: "{{ VAR_Nginx_server }}"
+  loop_control:
+      loop_var: outer_item
+
+- name: delete manager host tmp file
+  file:
+    path: "{{ VAR_Nginx_tmpDir }}/Nginx_Setup"
+    state: absent
+  delegate_to: localhost
+  become: no
+
+- name: delete target host tmp file
+  file:
+    path: "{{ VAR_Nginx_tmpDir }}/Nginx_Setup"
+    state: absent
+  become: yes
+
+# - name: check param subEle of VAR_Nginx_server
+  # include_tasks: pre_check.yml
+
+- name: get all conf files from target host
+  include_tasks: get_allConfFile.yml
+
+- name: crossplane parse and build
+  include_tasks: parseAndBuild.yml

@@ -1,0 +1,151 @@
+---
+- name: copy nginx.conf from target host to manager host
+  fetch:
+    src: "{{ _nginxConfPath }}"
+    dest: "{{ VAR_Nginx_tmpDir }}/Nginx_Setup/{{ inventory_hostname }}/conf_root{{ _nginxConfPath }}"
+    flat: yes
+
+- name: copy confPathList.txt from target host to manager host
+  fetch:
+    src: "{{ VAR_Nginx_tmpDir }}/Nginx_Setup/{{ inventory_hostname }}/conf/confPathList.txt"
+    dest: "{{ VAR_Nginx_tmpDir }}/Nginx_Setup/{{ inventory_hostname }}/conf/confPathList.txt"
+    flat: yes
+
+- name: copy setConfPath.py and setConfPathToInit.py on manager host
+  copy:
+    src: "{{ item }}"
+    dest: "{{ VAR_Nginx_tmpDir }}/Nginx_Setup/{{ inventory_hostname }}/conf/"
+  delegate_to: localhost
+  with_items:
+    - setConfPath.py
+    - setConfPathToInit.py
+    - setServerConfPath.py
+    - setServerConfPathToInit.py
+
+- name: set conf include path
+  command: "python setConfPath.py {{ VAR_Nginx_tmpDir }}/Nginx_Setup/{{ inventory_hostname }}/conf/confPathList.txt {{ VAR_Nginx_tmpDir }}/Nginx_Setup/{{ inventory_hostname }}/conf_root"
+  changed_when: true
+  args:
+    chdir: "{{ VAR_Nginx_tmpDir }}/Nginx_Setup/{{ inventory_hostname }}/conf/"
+  delegate_to: localhost
+
+- name: set nginx.conf include path
+  command: "python setServerConfPath.py {{ VAR_Nginx_tmpDir }}/Nginx_Setup/{{ inventory_hostname }}/conf_root{{ _nginxConfPath }} {{ VAR_Nginx_tmpDir }}/Nginx_Setup/{{ inventory_hostname }}/conf_root"
+  changed_when: true
+  args:
+    chdir: "{{ VAR_Nginx_tmpDir }}/Nginx_Setup/{{ inventory_hostname }}/conf/"
+  delegate_to: localhost
+
+- name: parse nginx.conf into nginx.json on manager host
+  command: "crossplane parse -o {{ VAR_Nginx_tmpDir }}/Nginx_Setup/{{ inventory_hostname }}/nginx.json {{ VAR_Nginx_tmpDir }}/Nginx_Setup/{{ inventory_hostname }}/conf_root{{ _nginxConfPath }}"
+  changed_when: true
+  delegate_to: localhost
+
+- name: set param to server.conf on manager host
+  template:
+    src: server.j2
+    dest: "{{ VAR_Nginx_tmpDir }}/Nginx_Setup/{{ inventory_hostname }}/{{ item.server_name | replace(' ','') }}.conf"
+  with_items: "{{ VAR_Nginx_server }}"
+  delegate_to: localhost
+
+- name: set server.conf include path
+  command: "python setServerConfPath.py {{ VAR_Nginx_tmpDir }}/Nginx_Setup/{{ inventory_hostname }}/{{ item.server_name | replace(' ','') }}.conf {{ VAR_Nginx_tmpDir }}/Nginx_Setup/{{ inventory_hostname }}/conf_root"
+  changed_when: true
+  args:
+    chdir: "{{ VAR_Nginx_tmpDir }}/Nginx_Setup/{{ inventory_hostname }}/conf/"
+  delegate_to: localhost
+  with_items: "{{ VAR_Nginx_server }}"
+
+- name: parse server.conf into server.json
+  command: "crossplane parse -o {{ VAR_Nginx_tmpDir }}/Nginx_Setup/{{ inventory_hostname }}/{{ item.server_name | replace(' ','') }}.json {{ VAR_Nginx_tmpDir }}/Nginx_Setup/{{ inventory_hostname }}/{{ item.server_name | replace(' ','') }}.conf"
+  changed_when: true
+  with_items: "{{ VAR_Nginx_server }}"
+  delegate_to: localhost
+
+- name: copy nginxToJson.py on manager host
+  copy:
+    src: nginxToJson.py
+    dest: "{{ VAR_Nginx_tmpDir }}/Nginx_Setup/{{ inventory_hostname }}/conf/"
+  delegate_to: localhost
+
+- name: call python program to process json data on manager host
+  command: "python nginxToJson.py {{ VAR_Nginx_tmpDir }}/Nginx_Setup/{{ inventory_hostname }}"
+  changed_when: true
+  args:
+    chdir: "{{ VAR_Nginx_tmpDir }}/Nginx_Setup/{{ inventory_hostname }}/conf/"
+  delegate_to: localhost
+
+- name: build nginx_tmp.json into nginx.conf and server.conf
+  command: "crossplane build -f {{ VAR_Nginx_tmpDir }}/Nginx_Setup/{{ inventory_hostname }}/nginx_tmp.json"
+  changed_when: true
+  become: yes
+  delegate_to: localhost
+
+- name: set conf include path to init
+  command: "python setConfPathToInit.py {{ VAR_Nginx_tmpDir }}/Nginx_Setup/{{ inventory_hostname }}/conf/confPathList.txt {{ VAR_Nginx_tmpDir }}/Nginx_Setup/{{ inventory_hostname }}/conf_root"
+  changed_when: true
+  args:
+    chdir: "{{ VAR_Nginx_tmpDir }}/Nginx_Setup/{{ inventory_hostname }}/conf/"
+  delegate_to: localhost
+
+- name: set server.conf include path to init
+  command: "python setServerConfPathToInit.py '{{ VAR_Nginx_tmpDir }}/Nginx_Setup/{{ inventory_hostname }}/conf_root{{ item.serverFilePath }}' {{ VAR_Nginx_tmpDir }}/Nginx_Setup/{{ inventory_hostname }}/conf_root"
+  changed_when: true
+  args:
+    chdir: "{{ VAR_Nginx_tmpDir }}/Nginx_Setup/{{ inventory_hostname }}/conf/"
+  delegate_to: localhost
+  with_items: "{{ VAR_Nginx_server }}"
+  when:
+    - item.serverFilePath is defined
+    - (item.serverFilePath is not none) and (item.serverFilePath != '')
+
+- name: set nginx.conf include path to init
+  command: "python setServerConfPathToInit.py {{ VAR_Nginx_tmpDir }}/Nginx_Setup/{{ inventory_hostname }}/conf_root{{ _nginxConfPath }} {{ VAR_Nginx_tmpDir }}/Nginx_Setup/{{ inventory_hostname }}/conf_root"
+  changed_when: true
+  args:
+    chdir: "{{ VAR_Nginx_tmpDir }}/Nginx_Setup/{{ inventory_hostname }}/conf/"
+  delegate_to: localhost
+
+- name: copy nginx.conf from manager host to target host
+  copy:
+    src: "{{ VAR_Nginx_tmpDir }}/Nginx_Setup/{{ inventory_hostname }}/conf_root{{ _nginxConfPath }}"
+    dest: "{{ _nginxConfPath }}"
+
+- name: copy include conf file from manager host to target host
+  copy:
+    src: "{{ VAR_Nginx_tmpDir }}/Nginx_Setup/{{ inventory_hostname }}/conf_root{{ item }}"
+    dest: "{{ item }}"
+  with_items: "{{ _confPathList.stdout_lines }}"
+
+- name: create serverFilePath directory
+  file:
+    path: "{{ item.serverFilePath.rpartition('/')[0] }}"
+    state: directory
+  with_items: "{{ VAR_Nginx_server }}"
+  when:
+    - item.isDelete == False
+    - item.serverFilePath is defined
+    - (item.serverFilePath is not none) and (item.serverFilePath != '')
+
+- name: copy param conf file from manager host to target host
+  copy:
+    src: "{{ VAR_Nginx_tmpDir }}/Nginx_Setup/{{ inventory_hostname }}/conf_root{{ item.serverFilePath }}"
+    dest: "{{ item.serverFilePath }}"
+  with_items: "{{ VAR_Nginx_server }}"
+  when:
+    - item.isDelete == False
+    - item.serverFilePath is defined
+    - (item.serverFilePath is not none) and (item.serverFilePath != '')
+  ignore_errors: yes
+
+- name: delete manager host tmp file
+  file:
+    path: "{{ VAR_Nginx_tmpDir }}/Nginx_Setup"
+    state: absent
+  delegate_to: localhost
+
+- name: delete target host tmp file
+  file:
+    path: "{{ VAR_Nginx_tmpDir }}/Nginx_Setup"
+    state: absent
+  become: yes

@@ -1,0 +1,33 @@
+---
+# not check `COMPLIANCE020201` by ansible-lint
+- name: check param VAR_Nginx_server.isDelete
+  fail:
+    msg: "The variable VAR_Nginx_server.isDelete must be defined and the type must be boolean."
+  when: (outer_item.isDelete is undefined) or ((outer_item.isDelete != True) and (outer_item.isDelete != False))
+
+- name: check param VAR_Nginx_server.server_name
+  fail:
+    msg: "The variable VAR_Nginx_server.server_name must be defined and cannot be NULL."
+  when: (outer_item.server_name is undefined) or (outer_item.server_name is none) or (outer_item.server_name == '')
+
+- name: check param VAR_Nginx_server.serverFilePath
+  fail:
+    msg: "When VAR_Nginx_server.isDelete is false, the variable VAR_Nginx_server.serverFilePath must be defined and cannot be NULL."
+  when:
+   - outer_item.isDelete == False
+   - (outer_item.serverFilePath is undefined) or (outer_item.serverFilePath is none) or (outer_item.serverFilePath == '')
+
+- name: check param VAR_Nginx_server.location
+  block:
+    - name: check param location.isDelete
+      fail:
+        msg: "The variable VAR_Nginx_server.location.isDelete must be defined and the type must be boolean."
+      with_items: "{{ outer_item.location }}"
+      when: (item.isDelete is undefined) or ((item.isDelete != True) and (item.isDelete != False))
+
+    - name: check param location.name
+      fail:
+        msg: "The variable VAR_Nginx_server.location.name must be defined and cannot be NULL."
+      with_items: "{{ outer_item.location }}"
+      when: (item.name is undefined) or (item.name is none) or (item.name == '')
+  when: outer_item.location is defined

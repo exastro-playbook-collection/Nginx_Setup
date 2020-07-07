@@ -1,0 +1,15 @@
+galaxy_info:
+  role_name: Nginx_Setup
+  description: setup Nginx.
+  author: NEC Corporation
+  company: NEC Corporation
+  license: Apache License 2.0
+  min_ansible_version: 2.8
+  platforms:
+    - name: EL
+      versions:
+        - 7
+  galaxy_tags: []
+  categories: []
+
+dependencies: []
